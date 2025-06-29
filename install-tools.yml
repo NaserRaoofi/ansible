@@ -1,0 +1,46 @@
+---
+# Install essential DevOps tools
+- name: "Install DevOps essential tools"
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: "Install DevOps core tools"
+      yum:
+        name:
+          - git         # Version control (essential!)
+          - docker      # Containerization platform
+          - wget        # File downloads
+          - htop        # System monitoring
+          - tree        # Directory structure viewing
+          - unzip       # Archive extraction
+        state: present
+      when: ansible_os_family == "RedHat"
+      
+    - name: "Start and enable Docker service"
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+        
+    - name: "Add ec2-user to docker group"
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+      
+    - name: "Test git installation"
+      command: git --version
+      register: git_version
+      
+    - name: "Test docker installation"
+      command: docker --version
+      register: docker_version
+      
+    - name: "Display DevOps tools installed"
+      debug:
+        msg: |
+          ✅ DevOps tools installed successfully:
+          � Git: {{ git_version.stdout }}
+          🐳 Docker: {{ docker_version.stdout }}
+          🔧 System monitoring and utilities ready!

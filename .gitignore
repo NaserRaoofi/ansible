@@ -1,0 +1,21 @@
+# Ignore SSH private keys
+*.pem
+*.key
+id_rsa*
+
+# Ignore sensitive files
+vault/
+secrets.yml
+
+# Ignore temporary files
+*.tmp
+*.log
+.DS_Store
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore Ansible retry files
+*.retry

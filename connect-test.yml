@@ -1,0 +1,58 @@
+---
+# Connectivity Test for Real Servers (EC2/VPS)
+# This version tests actual SSH connections
+
+- name: "Connectivity Test - Real Servers"
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: "Test 1: Basic ping (ansible connectivity)"
+      ping:
+      
+    - name: "Test 2: SSH connection details"
+      debug:
+        msg: |
+          🔗 SSH Connection Info:
+          Remote Host: {{ inventory_hostname }}
+          Connected via: {{ ansible_connection }}
+          SSH User: {{ ansible_user }}
+          
+    - name: "Test 3: Check server details"
+      debug:
+        msg: |
+          🖥️ Server Details:
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Hostname: {{ ansible_hostname }}
+          IP Address: {{ ansible_default_ipv4.address }}
+          Architecture: {{ ansible_architecture }}
+          CPU Cores: {{ ansible_processor_cores }}
+          Memory: {{ ansible_memtotal_mb }}MB
+          
+    - name: "Test 4: Check disk space"
+      command: df -h /
+      register: disk_space
+      
+    - name: "Test 5: Display disk info"
+      debug:
+        msg: "💾 Disk Space: {{ disk_space.stdout_lines[1] }}"
+        
+    - name: "Test 6: Test sudo access"
+      become: yes
+      command: whoami
+      register: sudo_check
+      
+    - name: "Test 7: Confirm privileges"
+      debug:
+        msg: "🔐 Sudo access: {{ sudo_check.stdout }}"
+        
+    - name: "Test 8: Check network connectivity"
+      uri:
+        url: https://google.com
+        method: GET
+        timeout: 10
+      register: network_test
+      
+    - name: "Test 9: Confirm internet access"
+      debug:
+        msg: "🌐 Internet access: {{ 'OK' if network_test.status == 200 else 'Failed' }}"
