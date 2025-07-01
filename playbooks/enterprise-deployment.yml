@@ -1,0 +1,233 @@
+---
+# 🏭 ENTERPRISE DEPLOYMENT PLAYBOOK
+# Real-world production deployment with advanced patterns
+# Usage: ansible-playbook -i inventories/production/hosts playbooks/site.yml
+
+- name: "🎯 Enterprise Production Deployment"
+  hosts: all
+  gather_facts: yes
+  serial: "{{ deployment_batch_size | default('20%') }}"
+  max_fail_percentage: 10
+  
+  # ============================================================================
+  # 📋 PRE-DEPLOYMENT VALIDATION
+  # ============================================================================
+  pre_tasks:
+    - name: "🔍 Validate Environment Configuration"
+      assert:
+        that:
+          - environment.name is defined
+          - environment.name == "production"
+          - ansible_os_family == "RedHat"
+          - ansible_memtotal_mb >= 1024
+        fail_msg: "❌ Environment validation failed"
+        success_msg: "✅ Environment validation passed"
+      tags: [validation, pre-deployment]
+      
+    - name: "📊 Display Deployment Information"
+      debug:
+        msg: |
+          
+          ╔══════════════════════════════════════════════════════════════╗
+          ║                 ENTERPRISE DEPLOYMENT INFO                  ║
+          ╚══════════════════════════════════════════════════════════════╝
+          
+          🎯 DEPLOYMENT DETAILS:
+          📱 Application: {{ application.name }}
+          📦 Version: {{ application.version }}
+          🌍 Environment: {{ environment.name | upper }}
+          🏷️  Region: {{ environment.region }}
+          🎛️  Strategy: {{ application.deployment.strategy | upper }}
+          
+          🖥️  SERVER DETAILS:
+          🏷️  Hostname: {{ inventory_hostname }}
+          🎯 Server ID: {{ server_id | default('N/A') }}
+          📍 AZ: {{ az | default('N/A') }}
+          🎭 Role: {{ tier | default('general') }}
+          💾 RAM: {{ ansible_memtotal_mb }}MB
+          🧠 CPU: {{ ansible_processor_cores }} cores
+          
+          🔐 SECURITY STATUS:
+          🛡️  Firewall: {{ security.firewall.enabled | ternary('✅ Enabled', '❌ Disabled') }}
+          🔒 SSL: {{ 'webservers' in group_names and nginx.ssl is defined | ternary('✅ Enabled', 'N/A') }}
+          📊 Monitoring: {{ monitoring.enabled | ternary('✅ Enabled', '❌ Disabled') }}
+          💾 Backup: {{ backup.enabled | ternary('✅ Enabled', '❌ Disabled') }}
+          
+      tags: [info, deployment]
+      
+    - name: "⏱️ Record Deployment Start Time"
+      set_fact:
+        deployment_start_time: "{{ ansible_date_time.iso8601 }}"
+        deployment_id: "{{ ansible_date_time.epoch }}-{{ inventory_hostname }}"
+      tags: [deployment, metrics]
+
+  # ============================================================================
+  # 🎭 ROLE-BASED DEPLOYMENT
+  # ============================================================================  
+  tasks:
+    - name: "🌐 Deploy Web Servers"
+      include_tasks: tasks/deploy-webserver.yml
+      when: "'webservers' in group_names"
+      tags: [webserver, deployment]
+      
+    - name: "🗄️ Deploy Database Servers"
+      include_tasks: tasks/deploy-database.yml
+      when: "'databases' in group_names"
+      tags: [database, deployment]
+      
+    - name: "📊 Deploy Monitoring Stack"
+      include_tasks: tasks/deploy-monitoring.yml
+      when: "'monitoring' in group_names"
+      tags: [monitoring, deployment]
+      
+    - name: "⚖️ Deploy Load Balancers"
+      include_tasks: tasks/deploy-loadbalancer.yml
+      when: "'loadbalancers' in group_names"
+      tags: [loadbalancer, deployment]
+
+    # ============================================================================
+    # 🔧 CONFIGURATION MANAGEMENT
+    # ============================================================================
+    - name: "🔧 Apply Security Hardening"
+      include_tasks: tasks/security-hardening.yml
+      tags: [security, hardening]
+      
+    - name: "📊 Configure Monitoring"
+      include_tasks: tasks/configure-monitoring.yml
+      when: monitoring.enabled | default(false)
+      tags: [monitoring, configuration]
+      
+    - name: "💾 Configure Backup"
+      include_tasks: tasks/configure-backup.yml
+      when: backup.enabled | default(false)
+      tags: [backup, configuration]
+
+    # ============================================================================
+    # 🧪 DEPLOYMENT VALIDATION
+    # ============================================================================
+    - name: "🧪 Health Check - Service Status"
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop: "{{ required_services | default([]) }}"
+      register: service_status
+      tags: [validation, health-check]
+      
+    - name: "🌐 Health Check - HTTP Endpoints"
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}{{ item.path }}"
+        method: GET
+        status_code: "{{ item.expected_status | default(200) }}"
+        timeout: 10
+      loop: "{{ health_check_endpoints | default([]) }}"
+      when: "'webservers' in group_names"
+      tags: [validation, health-check]
+      
+    - name: "📊 Collect Deployment Metrics"
+      set_fact:
+        deployment_metrics:
+          deployment_id: "{{ deployment_id }}"
+          start_time: "{{ deployment_start_time }}"
+          end_time: "{{ ansible_date_time.iso8601 }}"
+          hostname: "{{ inventory_hostname }}"
+          server_id: "{{ server_id | default('unknown') }}"
+          environment: "{{ environment.name }}"
+          application_version: "{{ application.version }}"
+          deployment_strategy: "{{ application.deployment.strategy }}"
+          success: true
+      tags: [metrics, deployment]
+
+  # ============================================================================
+  # 📋 POST-DEPLOYMENT TASKS
+  # ============================================================================
+  post_tasks:
+    - name: "📊 Display Deployment Summary"
+      debug:
+        msg: |
+          
+          ╔══════════════════════════════════════════════════════════════╗
+          ║                   DEPLOYMENT COMPLETED                      ║
+          ╚══════════════════════════════════════════════════════════════╝
+          
+          ✅ DEPLOYMENT SUCCESS:
+          🆔 ID: {{ deployment_metrics.deployment_id }}
+          ⏰ Started: {{ deployment_metrics.start_time }}
+          🏁 Completed: {{ deployment_metrics.end_time }}
+          🖥️  Server: {{ deployment_metrics.hostname }}
+          📦 Version: {{ deployment_metrics.application_version }}
+          
+          🎯 NEXT STEPS:
+          1. Monitor application logs: /var/log/{{ application.name }}
+          2. Check monitoring dashboard: {{ monitoring_dashboard_url | default('N/A') }}
+          3. Verify backup configuration
+          4. Review security compliance
+          
+      tags: [summary, deployment]
+      
+    - name: "📧 Send Deployment Notification"
+      mail:
+        to: "{{ notifications.email.deployment_list | default(['ops@company.com']) }}"
+        subject: "✅ Production Deployment Completed - {{ application.name }} v{{ application.version }}"
+        body: |
+          Deployment completed successfully:
+          
+          Environment: {{ environment.name | upper }}
+          Application: {{ application.name }}
+          Version: {{ application.version }}
+          Server: {{ inventory_hostname }}
+          Deployment ID: {{ deployment_metrics.deployment_id }}
+          
+          Health checks: PASSED
+          Security: ENABLED
+          Monitoring: ACTIVE
+          Backup: CONFIGURED
+          
+          Deployment completed at: {{ deployment_metrics.end_time }}
+      when: 
+        - notifications.email.enabled | default(false)
+        - deployment_metrics.success | default(false)
+      tags: [notification, post-deployment]
+      ignore_errors: yes
+
+  # ============================================================================
+  # 🔥 ERROR HANDLING
+  # ============================================================================  
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+      when: "'webservers' in group_names"
+      
+    - name: restart mysql
+      systemd:
+        name: mysqld
+        state: restarted
+      when: "'databases' in group_names"
+      
+    - name: reload firewall
+      systemd:
+        name: firewalld
+        state: reloaded
+
+# ============================================================================
+# 🔍 DEPLOYMENT ROLLBACK PLAYBOOK (if needed)
+# ============================================================================
+- name: "🔄 Rollback Procedure (if deployment fails)"
+  hosts: all
+  gather_facts: no
+  
+  tasks:
+    - name: "🚨 Deployment Rollback"
+      debug:
+        msg: |
+          ⚠️  ROLLBACK INITIATED
+          
+          To rollback this deployment:
+          1. ansible-playbook -i inventories/production/hosts playbooks/rollback.yml
+          2. Check application logs
+          3. Notify team via Slack
+          
+      when: deployment_failed | default(false)
+      tags: [rollback, emergency]

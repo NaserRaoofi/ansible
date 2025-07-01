@@ -1,0 +1,38 @@
+---
+# 🧪 STAGING ENVIRONMENT VARIABLES
+# Pre-production testing configuration
+
+environment:
+  name: "staging"
+  short_name: "staging"
+  domain: "staging.company.com"
+  region: "us-east-1"
+
+# Reduced resource allocation for staging
+infrastructure:
+  vpc:
+    cidr: "10.1.0.0/16"
+
+# Security (less strict than production)
+security:
+  firewall:
+    enabled: true
+    default_policy: "allow"  # More permissive for testing
+    
+# Monitoring (basic)
+monitoring:
+  enabled: true
+  retention_days: 7
+
+# Backup (minimal)
+backup:
+  enabled: true
+  retention:
+    daily: 3
+    weekly: 1
+
+# Application
+application:
+  name: "enterprise-app"
+  deployment:
+    strategy: "rolling"  # Faster deployment for testing

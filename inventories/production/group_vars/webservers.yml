@@ -1,0 +1,186 @@
+---
+# 🌐 WEB SERVERS - Production Configuration
+# Tier: Frontend/Web
+# Environment: Production
+
+# ============================================================================
+# 🔧 NGINX CONFIGURATION
+# ============================================================================
+nginx:
+  version: "1.20"
+  
+  performance:
+    worker_processes: "auto"
+    worker_connections: 4096
+    keepalive_timeout: 65
+    client_max_body_size: "100M"
+    
+  ssl:
+    protocols: "TLSv1.2 TLSv1.3"
+    ciphers: "ECDHE+AESGCM:ECDHE+AES256:ECDHE+AES128:!aNULL:!MD5:!DSS"
+    certificate_path: "/etc/ssl/certs/company.crt"
+    private_key_path: "/etc/ssl/private/company.key"
+    dhparam_path: "/etc/ssl/certs/dhparam.pem"
+    
+  security:
+    server_tokens: "off"
+    add_header:
+      - "X-Frame-Options DENY"
+      - "X-Content-Type-Options nosniff"
+      - "X-XSS-Protection '1; mode=block'"
+      - "Strict-Transport-Security 'max-age=31536000; includeSubDomains'"
+      
+  caching:
+    enabled: true
+    proxy_cache_path: "/var/cache/nginx"
+    proxy_cache_levels: "1:2"
+    proxy_cache_max_size: "1g"
+    proxy_cache_inactive: "60m"
+
+# ============================================================================
+# 🎯 APPLICATION CONFIGURATION
+# ============================================================================
+application:
+  document_root: "/var/www/html"
+  
+  php:
+    version: "8.1"
+    memory_limit: "256M"
+    max_execution_time: 30
+    upload_max_filesize: "100M"
+    post_max_size: "100M"
+    
+    fpm:
+      pool_name: "www"
+      user: "nginx"
+      group: "nginx"
+      pm_type: "dynamic"
+      pm_max_children: 50
+      pm_start_servers: 5
+      pm_min_spare_servers: 5
+      pm_max_spare_servers: 35
+
+# ============================================================================
+# 📊 PERFORMANCE & SCALING
+# ============================================================================
+performance:
+  auto_scaling:
+    enabled: true
+    min_capacity: 3
+    max_capacity: 10
+    target_cpu_utilization: 70
+    scale_out_cooldown: 300
+    scale_in_cooldown: 300
+    
+  load_balancing:
+    algorithm: "round_robin"
+    health_check:
+      path: "/health"
+      interval: 30
+      timeout: 5
+      
+# ============================================================================
+# 🔐 SECURITY CONFIGURATION
+# ============================================================================
+security:
+  web_application_firewall:
+    enabled: true
+    mode: "prevention"
+    rule_set: "OWASP_3.0"
+    
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst: 50
+    
+  ip_whitelisting:
+    enabled: false
+    allowed_ips: []
+
+# ============================================================================
+# 📝 LOGGING CONFIGURATION
+# ============================================================================
+logging:
+  access_log:
+    enabled: true
+    path: "/var/log/nginx/access.log"
+    format: "json"
+    
+  error_log:
+    enabled: true
+    path: "/var/log/nginx/error.log"
+    level: "warn"
+    
+  log_rotation:
+    enabled: true
+    frequency: "daily"
+    retention_days: 30
+
+# ============================================================================
+# 💾 BACKUP CONFIGURATION
+# ============================================================================
+backup:
+  web_content:
+    enabled: true
+    source_path: "/var/www/html"
+    schedule: "0 3 * * *"
+    retention_days: 7
+    
+  configuration:
+    enabled: true
+    paths:
+      - "/etc/nginx"
+      - "/etc/php"
+    schedule: "0 4 * * *"
+
+# ============================================================================
+# 📊 MONITORING & HEALTH CHECKS
+# ============================================================================
+monitoring:
+  nginx_exporter:
+    enabled: true
+    port: 9113
+    metrics_path: "/metrics"
+    
+  health_checks:
+    - name: "nginx_status"
+      url: "http://localhost/nginx_status"
+      expected_status: 200
+      
+    - name: "application_health"
+      url: "http://localhost/health"
+      expected_status: 200
+      
+  alerts:
+    - name: "high_response_time"
+      threshold: 2000  # milliseconds
+      
+    - name: "high_error_rate"
+      threshold: 5     # percentage
+
+# ============================================================================
+# 🔄 DEPLOYMENT CONFIGURATION
+# ============================================================================
+deployment:
+  strategy: "rolling"
+  
+  rolling:
+    max_unavailable: 1
+    max_surge: 1
+    
+  zero_downtime:
+    enabled: true
+    health_check_grace_period: 30
+    
+# ============================================================================
+# 🌍 ENVIRONMENT SPECIFIC OVERRIDES
+# ============================================================================
+environment_overrides:
+  compression:
+    enabled: true
+    types:
+      - "text/html"
+      - "text/css"
+      - "text/javascript"
+      - "application/javascript"
+      - "application/json"

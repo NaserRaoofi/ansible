@@ -1,0 +1,30 @@
+# 📦 ANSIBLE PROJECT REQUIREMENTS
+# Enterprise-grade dependencies
+
+# Core Ansible
+ansible>=7.0.0
+ansible-core>=2.14.0
+
+# Cloud Providers
+boto3>=1.26.0          # AWS SDK for dynamic inventory
+azure-mgmt-compute     # Azure support
+google-auth            # Google Cloud support
+
+# Security & Encryption
+ansible-vault          # Secret management
+cryptography>=3.4.8   # Encryption libraries
+
+# Performance & Monitoring
+redis                  # Fact caching
+netaddr               # Network address manipulation
+jmespath              # JSON queries
+
+# Development & Testing
+yamllint              # YAML linting
+ansible-lint          # Ansible best practices
+molecule              # Testing framework
+
+# Optional Utilities
+jinja2>=3.0.0         # Template engine
+requests>=2.28.0      # HTTP library
+paramiko>=2.11.0      # SSH client

@@ -1,0 +1,222 @@
+---
+# 🌍 GLOBAL PRODUCTION VARIABLES - Enterprise Grade
+# Environment: Production
+# Last Updated: {{ ansible_date_time.iso8601 | default('Unknown') }}
+
+# ============================================================================
+# 🏷️ ENVIRONMENT IDENTIFICATION
+# ============================================================================
+environment:
+  name: "production"
+  short_name: "prod"
+  domain: "company.com"
+  region: "us-east-1"
+  availability_zones:
+    - "us-east-1a"
+    - "us-east-1b"
+    - "us-east-1c"
+
+# ============================================================================
+# 🏗️ INFRASTRUCTURE CONFIGURATION
+# ============================================================================
+infrastructure:
+  vpc:
+    cidr: "10.0.0.0/16"
+    subnets:
+      public:
+        - "10.0.0.0/24"  # Load balancers
+      private:
+        - "10.0.1.0/24"  # Web servers
+        - "10.0.2.0/24"  # Databases
+        - "10.0.3.0/24"  # Monitoring
+      management:
+        - "10.0.4.0/24"  # Bastion/Jump hosts
+        
+  load_balancer:
+    type: "application"
+    ssl_policy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+    health_check:
+      path: "/health"
+      interval: 30
+      timeout: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 5
+
+# ============================================================================
+# 🔐 SECURITY & COMPLIANCE
+# ============================================================================
+security:
+  ssh:
+    port: 22
+    allowed_users: ["ansible", "admin"]
+    key_types: ["rsa", "ed25519"]
+    disable_password_auth: true
+    
+  firewall:
+    enabled: true
+    default_policy: "deny"
+    log_dropped: true
+    
+  compliance:
+    pci_dss: false
+    hipaa: false
+    sox: true
+    gdpr: true
+    
+  ssl:
+    min_version: "TLSv1.2"
+    ciphers: "ECDHE+AESGCM:ECDHE+AES256:ECDHE+AES128:!aNULL:!MD5:!DSS"
+    hsts_enabled: true
+    hsts_max_age: 31536000
+
+# ============================================================================
+# 📊 MONITORING & OBSERVABILITY
+# ============================================================================
+monitoring:
+  enabled: true
+  stack: "prometheus"
+  
+  prometheus:
+    retention: "90d"
+    scrape_interval: "15s"
+    evaluation_interval: "15s"
+    
+  grafana:
+    admin_user: "admin"
+    # admin_password stored in vault
+    session_lifetime: "24h"
+    
+  alerting:
+    enabled: true
+    channels:
+      - type: "slack"
+        webhook_url: "{{ vault_slack_webhook }}"
+      - type: "email"
+        smtp_server: "smtp.company.com"
+        
+  logging:
+    centralized: true
+    retention_days: 365
+    log_level: "info"
+    structured_logging: true
+
+# ============================================================================
+# 💾 BACKUP & DISASTER RECOVERY
+# ============================================================================
+backup:
+  enabled: true
+  strategy: "incremental"
+  
+  schedule:
+    full: "0 2 * * 0"      # Weekly full backup
+    incremental: "0 2 * * 1-6"  # Daily incremental
+    
+  retention:
+    daily: 7
+    weekly: 4
+    monthly: 12
+    yearly: 3
+    
+  storage:
+    type: "s3"
+    bucket: "company-backups-prod"
+    encryption: true
+    
+  disaster_recovery:
+    rto: 4  # Recovery Time Objective (hours)
+    rpo: 1  # Recovery Point Objective (hours)
+
+# ============================================================================
+# 🚀 APPLICATION DEPLOYMENT
+# ============================================================================
+application:
+  name: "enterprise-app"
+  version: "{{ app_version | default('latest') }}"
+  
+  deployment:
+    strategy: "blue_green"
+    health_check_url: "/health"
+    readiness_probe: "/ready"
+    liveness_probe: "/alive"
+    
+  scaling:
+    min_instances: 3
+    max_instances: 10
+    target_cpu_utilization: 70
+    
+  resources:
+    cpu_request: "500m"
+    cpu_limit: "2000m"
+    memory_request: "1Gi"
+    memory_limit: "4Gi"
+
+# ============================================================================
+# 🗄️ DATABASE CONFIGURATION
+# ============================================================================
+database:
+  engine: "mysql"
+  version: "8.0"
+  
+  performance:
+    max_connections: 500
+    innodb_buffer_pool_size: "2G"
+    innodb_log_file_size: "256M"
+    query_cache_type: 1
+    
+  high_availability:
+    replication: true
+    backup_enabled: true
+    read_replicas: 1
+    
+  maintenance:
+    window: "sun:03:00-sun:04:00"
+    backup_window: "02:00-03:00"
+
+# ============================================================================
+# 🌐 CONTENT DELIVERY NETWORK
+# ============================================================================
+cdn:
+  enabled: true
+  provider: "cloudflare"
+  cache_ttl: 3600
+  compression: true
+  
+# ============================================================================
+# 📧 NOTIFICATION SETTINGS
+# ============================================================================
+notifications:
+  email:
+    enabled: true
+    smtp_server: "smtp.company.com"
+    from_address: "noreply@company.com"
+    
+  slack:
+    enabled: true
+    webhook_url: "{{ vault_slack_webhook }}"
+    channel: "#production-alerts"
+
+# ============================================================================
+# 🔄 MAINTENANCE & OPERATIONS
+# ============================================================================
+maintenance:
+  patching:
+    schedule: "first sunday of month"
+    window: "02:00-06:00"
+    reboot_required: true
+    
+  updates:
+    auto_security_updates: true
+    package_manager: "yum"
+    
+# ============================================================================
+# 🎯 PERFORMANCE TUNING
+# ============================================================================
+performance:
+  kernel:
+    tcp_keepalive_time: 7200
+    tcp_keepalive_probes: 9
+    tcp_keepalive_intvl: 75
+    
+  network:
+    tcp_congestion_control: "bbr"
+    tcp_slow_start_after_idle: 0

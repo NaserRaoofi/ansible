@@ -1,21 +1,34 @@
-# Ignore SSH private keys
+# 🔐 ANSIBLE PROJECT - SECURITY EXCLUSIONS
+
+# SSH Private Keys (NEVER commit these!)
 *.pem
 *.key
 id_rsa*
+*.ppk
 
-# Ignore sensitive files
+# Ansible Vault Password Files
+.vault_pass*
+vault_password*
 vault/
 secrets.yml
 
-# Ignore temporary files
-*.tmp
+# Temporary & Cache Files
+*.retry
+.ansible/
+logs/
 *.log
+*.tmp
 .DS_Store
 
-# Ignore Python cache
+# Python Files
 __pycache__/
 *.pyc
 *.pyo
 
-# Ignore Ansible retry files
-*.retry
+# Environment & IDE Files
+.env
+.vscode/
+.idea/
+
+# Dynamic Inventory Cache
+.inventory_cache
